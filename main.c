@@ -4,8 +4,10 @@
 #include <profileapi.h>
 #include <stdint.h>
 
-long processo_somar(int range) {
-    long total = 0;
+LARGE_INTEGER frequencia;
+
+long long processo_somar(int range) {
+    long long total = 0;
     for (int i = 0; i < range; ++i) {
         total += i;
     }
@@ -14,7 +16,7 @@ long processo_somar(int range) {
 
 double temporizador_cpu_tick(int range) {
     clock_t clock_inicio = clock();
-    long resultado = processo_somar(range);
+    long long resultado = processo_somar(range);
     clock_t clock_fim = clock();
 
     double tempo = (double)(clock_fim - clock_inicio) / CLOCKS_PER_SEC;
@@ -22,26 +24,27 @@ double temporizador_cpu_tick(int range) {
     return tempo;
 }
 
-int64_t temporizador_relogio_humano(int range) {
-    LARGE_INTEGER ticks;
-    long resultado = processo_somar(range);
+double temporizador_relogio_humano(int range, LARGE_INTEGER frequencia) {
+    LARGE_INTEGER inicio;
+    LARGE_INTEGER fim;
 
+    QueryPerformanceCounter(&inicio);
+    long long resultado = processo_somar(range);
+    QueryPerformanceCounter(&fim);
+
+    long long diferenca = fim.QuadPart - inicio.QuadPart;
+    double tempo = (double)diferenca / (double)frequencia.QuadPart;
 
     return tempo;
 }
 
-static inline int64_t GetTicks()
-{
-    LARGE_INTEGER ticks;
-    if (!QueryPerformanceCounter(&ticks))
-    {
-        winrt::throw_last_error();
-    }
-    return ticks.QuadPart;
-}
 
 int main() {
-    double resultado = temporizador_cpu_tick(2147483647);
-    printf("%.6f", resultado);
+    QueryPerformanceFrequency(&frequencia);
+
+    // double resultado = temporizador_cpu_tick(2147483647);
+    double resultado2 = temporizador_relogio_humano(2147483647, frequencia);
+    // printf("%.6f", resultado);
+    printf("\n%.6f", resultado2);
     return 0;
 }
