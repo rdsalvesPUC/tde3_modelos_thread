@@ -151,8 +151,7 @@ int main() {
 |           1000 |   (N:1000, M:1000)  |      236.148017 |
 
 ### Gráfico comparativo (opcional, mas recomendado)
-![Gráfico comparativo dos modelos](https://pucpredu-my.sharepoint.com/:i:/r/personal/s_rodrigo5_pucpr_edu_br/Documents/2025.2/04-Performance/tde3-graficos/output.png?csf=1&web=1&e=UcReDl?raw=true
-)
+![Gráfico comparativo dos modelos](output.png)
 
 ### Relatório com análise crítica dos resultados
 - Logo de cara achamos estranho os tempos do modelo N:M terem se mantido altos, quase sem nenhuma diferença, nem ganho de desempenho.
