@@ -1,60 +1,164 @@
-Atividade Prática: Comparação de Desempenho entre Modelos de Threads N:M e 1:1
+# Atividade Prática: Comparação de Desempenho entre Modelos de Threads N:M e 1:1
 
-Objetivo:
+## Objetivo:
 Desenvolver dois programas em Java que simulem os modelos de execução de threads N:M e 1:1, e comparar o desempenho entre eles com base no tempo total de execução. O objetivo é compreender como o modelo de mapeamento de threads influencia a eficiência da execução concorrente.
 
-Descrição da Tarefa
-Você deverá implementar dois programas distintos:
+## Entregáveis
 
-Simulação do modelo N:M: múltiplas threads de usuário são mapeadas para um número menor de threads do sistema operacional, permitindo que múltiplas threads de usuário sejam gerenciadas simultaneamente, mas com controle parcial do escalonamento pela aplicação. Para simular esse modelo em Java, implemente um agrupamento de threads de usuário que são gerenciadas e executadas por um conjunto fixo de threads do sistema (por exemplo, utilizando um pool de threads que executa as tarefas de maneira multiplexada).
+### Código-fonte dos dois programas (N:M e 1:1)
+#### Modelo N:M
+```C
+#include <stdio.h>
+#include <pthread.h>
+#include <windows.h>
+#include <stdint.h>
 
-Simulação do modelo 1:1: múltiplas threads de usuário mapeadas diretamente para threads do sistema operacional, com execução concorrente real.
+LARGE_INTEGER frequencia;
+int         N = 100;
+int         M = 4;
+long long   carga = 2147483647;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+int proxima_tarefa = 0;
 
-Ambos os programas devem realizar a mesma tarefa computacional (por exemplo, cálculos simples, simulação de carga ou espera com sleep) para permitir uma comparação justa.
+void* processo_somar_thread(void* carga) {
+    long long range = *(long long*)carga;
+    volatile long long total = 0;
+    for (int i = 0; i < range; ++i) {
+        total += i;
+    }
+    return NULL;
+}
 
-Métrica de Avaliação
+void* fila_processosNM(void* arg) {
+    (void)arg;
+    while (1) {
+        int meu_indice;
 
-Tempo total de execução (em milissegundos), medido do início ao fim da execução de todas as threads.
+        pthread_mutex_lock(&mutex);
+        if (proxima_tarefa >= N) {
+            pthread_mutex_unlock(&mutex);
+            break;
+        }
+        meu_indice = proxima_tarefa++;
+        pthread_mutex_unlock(&mutex);
 
-A comparação deve ser feita com diferentes quantidades de threads (ex: 10, 100, 500, 1000) para observar o impacto da escalabilidade.
+        printf("Thread: %p executando tarefa: %d\n", (void*)pthread_self(), meu_indice);
+        processo_somar_thread(&carga);
 
-Passo a Passo de Implementação:
+        fflush(stdout);
+    }
+    return NULL;
+}
 
-Parte 1: Preparação
+int main() {
+    QueryPerformanceFrequency(&frequencia);
+    LARGE_INTEGER inicioNM;
+    LARGE_INTEGER fimNM;
+    pthread_t threadsNM[M];
+    
+    QueryPerformanceCounter(&inicioNM);
+    
+    for (int i = 0; i < M; ++i) {
+        pthread_create(&threadsNM[i], NULL, fila_processosNM, NULL);
+    }
+    
+    for (int i = 0; i < M; ++i) {
+        pthread_join(threadsNM[i], NULL);
+    }
+    
+    QueryPerformanceCounter(&fimNM);
+    
+    double resultadoNM = (double)(fimNM.QuadPart - inicioNM.QuadPart) / (double)frequencia.QuadPart;
+    printf("\nmodelo N:M (N:%d, M:%d) - Tempo Total: %.6f", N, M, resultadoNM);
 
-Escolha uma tarefa simples que cada thread irá executar (ex: somar números, simular carga com SLEEP, etc.).
+    return 0;
+}
+```
 
-Defina um número fixo de iterações ou tempo de execução por thread.
+#### Modelo 1:1
+```C
+#include <stdio.h>
+#include <pthread.h>
+#include <windows.h>
+#include <stdint.h>
 
-Parte 2: Simulação do Modelo N:M
-3. Crie um pool fixo de threads do sistema operacional (ex: usando ExecutorService com número limitado de threads).
-4. Distribua a execução das múltiplas threads de usuário (tarefas) entre essas threads do sistema, simulando o multiplexamento de N threads de usuário em M threads do sistema.
-5. Meça o tempo total de execução usando System.currentTimeMillis() ou System.nanoTime().
+LARGE_INTEGER frequencia;
+int         N = 100;
+long long   carga = 2147483647;
 
-Parte 3: Simulação do Modelo 1:1
-6. Crie múltiplas threads reais usando a API padrão do Java (Thread ou Runnable), onde cada thread de usuário corresponde a uma thread do sistema.
-7. Inicie todas as threads quase simultaneamente e aguarde sua conclusão com join().
-8. Meça o tempo total de execução da mesma forma que no modelo N:M.
+void* processo_somar_thread(void* carga) {
+    long long range = *(long long*)carga;
+    volatile long long total = 0;
+    for (int i = 0; i < range; ++i) {
+        total += i;
+    }
+    return NULL;
+}
 
-Parte 4: Comparação e Análise
-9. Execute ambos os programas com diferentes quantidades de threads (ex: 10, 100, 500, 1000).
-10. Registre os tempos de execução em uma tabela.
-11. Analise os resultados e identifique em que ponto o modelo 1:1 se torna mais vantajoso, considerando o impacto do número de threads do sistema disponível no modelo N:M.
-12. Elabore um relatório com gráficos comparativos e conclusões sobre o desempenho de cada modelo.
+void* fila_processos11(void* arg) {
+    int meu_indice = *(int*)arg;
 
-Entregáveis
+    printf("Thread: %p executando tarefa: %d\n", (void*)pthread_self(), meu_indice);
+    processo_somar_thread(&carga);
 
-Código-fonte dos dois programas (N:M e 1:1)
+    fflush(stdout);
+    return NULL;
+}
 
-Tabela com os tempos de execução para diferentes quantidades de threads
 
-Gráfico comparativo (opcional, mas recomendado)
+int main() {
+    QueryPerformanceFrequency(&frequencia);
+    LARGE_INTEGER inicio11;
+    LARGE_INTEGER fim11;
+    pthread_t* threads11 = (pthread_t*)malloc(sizeof(pthread_t) * N);
+    int* indices = (int*)malloc(sizeof(int) * N);
 
-Relatório com análise crítica dos resultados
+    QueryPerformanceCounter(&inicio11);
 
-ENVIO: A atividade deve ser enviada via GitHub com os resultados dos comparativos no README e os códigos.
-Não haverá entrega fora do prazo.
-Observação: A atividade pode demandar autoria, então todos do grupo devem saber explicar.
-Grupo de até 4 pessoas.
-Pessoas que não estiverem em grupo podem realizar a atividade sozinhas.
-Os grupos serão formados em sala de aula.
+    for (int i = 0; i < N; ++i) {
+        indices[i] = i;
+        pthread_create(&threads11[i], NULL, fila_processos11, &indices[i]);
+    }
+
+    for (int i = 0; i < N; ++i) {
+        pthread_join(threads11[i], NULL);
+    }
+
+    QueryPerformanceCounter(&fim11);
+
+    double resultado11 = (double)(fim11.QuadPart - inicio11.QuadPart) / (double)frequencia.QuadPart;
+    printf("\nmodelo 1:1 (1:%d, 1:%d) - Tempo Total: %.6f", N, N, resultado11);
+
+    free(threads11);
+    free(indices);
+
+    return 0;
+}
+```
+### Tabela com os tempos de execução para diferentes quantidades de threads
+| Threads | Configuração (1, 1) | Tempo Total (s) |
+| ------: |:-------------------:| --------------: |
+|      10 |    (1:10, 1:10)     |        2.920836 |
+|     100 |   (1:100, 1:100)    |       24.469351 |
+|     500 |   (1:500, 1:500)    |      125.567725 |
+|    1000 |  (1:1000, 1:1000)   |      242.282212 |
+
+| M (threads SO) | Configuração (N, M) | Tempo Total (s) |
+| -------------: | :-----------------: | --------------: |
+|             10 |    (N:1000, M:10)   |      252.665331 |
+|            100 |   (N:1000, M:100)   |      238.800051 |
+|            500 |   (N:1000, M:500)   |      238.241453 |
+|           1000 |   (N:1000, M:1000)  |      236.148017 |
+
+### Gráfico comparativo (opcional, mas recomendado)
+![Gráfico comparativo dos modelos](https://pucpredu-my.sharepoint.com/:i:/r/personal/s_rodrigo5_pucpr_edu_br/Documents/2025.2/04-Performance/tde3-graficos/output.png?csf=1&web=1&e=UcReDl?raw=true
+)
+
+### Relatório com análise crítica dos resultados
+- Logo de cara achamos estranho os tempos do modelo N:M terem se mantido altos, quase sem nenhuma diferença, nem ganho de desempenho.
+- Mas entendemos que o tipo de tarefa que escolhemos, soma dos valores de 2147483647, é uma tarefa que depende 100% do CPU.
+- Então apesar de em teoria lançarmos 10, 100, 500 ou 1000 threads, na prática ficamos limitados as threads fisicas do ‘hardware’.
+- Esses testes foram executados em um 11th Intel Core i5-11400 com 2.60GHz.
+- Outro tipo de processo como o sleep() teria dado resultados bem diferentes.
+- Também imaginamos que o fato de estarmos usando: printf("Thread: %p executando tarefa: %d\n", (void*)pthread_self(), meu_indice); também amarrou o lançamento das threads e a execução dos processos, à sincronização de tela do sistema.
+- Por último, mas não menos importante, nem de longe, temos conhecimento suficiente em C para saber se o algoritmo criado, tem um bom desempenho.
