@@ -4,30 +4,27 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
 public class NtoM {
+    static long contador = 0L;
     static class Soma implements Runnable {
         private final int range;
-        private final LongAdder sink;
 
-        Soma(int range, LongAdder sink) {
+        Soma(int range) {
             this.range = range;
-            this.sink = sink;
         }
 
         @Override
         public void run() {
             long acc = 0L;
             for (int i = 0; i < range; i++) acc += i;
-            sink.add(acc);
+            contador += acc;
         }
     }
 
-    static long runVirtual(int tasks, int range) throws InterruptedException {
-        LongAdder sink = new LongAdder();
+    static long run(int tasks, int range) throws InterruptedException {
         List<Thread> threads = new ArrayList<>(tasks);
-
         long t0 = System.nanoTime();
         for (int i = 0; i < tasks; i++) {
-            threads.add(Thread.startVirtualThread(new Soma(range, sink)));
+            threads.add(Thread.startVirtualThread(new Soma(range)));
         }
         for (Thread t : threads) t.join();
         long t1 = System.nanoTime();
@@ -44,7 +41,7 @@ public class NtoM {
         System.out.println("-------------------------------");
 
         for (int t : tasks) {
-            long tempo = runVirtual(t, range);
+            long tempo = run(t, range);
             System.out.printf("%-10d | %-15d%n", t, tempo);
         }
         System.out.println();
